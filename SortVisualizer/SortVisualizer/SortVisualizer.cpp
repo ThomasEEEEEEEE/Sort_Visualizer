@@ -10,6 +10,7 @@ using std::thread;
 using std::mutex;
 using std::chrono::steady_clock;
 using std::chrono::time_point;
+using std::swap;
 
 class Visualizer : public PixelGameEngine
 {
@@ -41,7 +42,8 @@ public:
         
         //SortThread = new thread(&Visualizer::BubbleSort, this);
         //SortThread = new thread(&Visualizer::InsertionSort, this);
-        SortThread = new thread(&Visualizer::SelectionSort, this);
+        //SortThread = new thread(&Visualizer::SelectionSort, this);
+        SortThread = new thread(&Visualizer::MergeSort, this);
 
         return true;
     }
@@ -134,6 +136,81 @@ public:
             Array[i] = temp;
             SortMutex.unlock();
         }
+    }
+
+    void MergeSort()
+    {
+        auto Merge = [&](int left, int mid, int right)
+        {
+            int llen = mid - left + 1;
+            int rlen = right - mid;
+
+            int * L = new int[llen];
+            int * R = new int[rlen];
+
+            SortMutex.lock();
+            for (int i = 0; i < llen; ++i)
+                L[i] = Array[left + i];
+            //std::copy(Array[left], Array[llen], L);
+            for (int j = 0; j < rlen; ++j)
+                R[j] = Array[mid + j + 1];
+            //std::copy(Array[mid + 1], Array[rlen], L);
+            SortMutex.unlock();
+
+            int l = 0;
+            int r = 0;
+            int m = left;
+
+            while (l < llen && r < rlen)
+            {
+                std::this_thread::sleep_for(std::chrono::nanoseconds(1001));
+                SortMutex.lock();
+                if (L[l] <= R[r])
+                {
+                    Array[m] = L[l];
+                    ++l;
+                }
+                else
+                {
+                    Array[m] = R[r];
+                    ++r;
+                }
+                ++m;
+                SortMutex.unlock();
+            }
+
+            while (l < llen)
+            {
+                SortMutex.lock();
+                Array[m] = L[l];
+                ++l;
+                ++m;
+                SortMutex.unlock();
+            }
+
+            while (r < rlen)
+            {
+                SortMutex.lock();
+                Array[m] = R[r];
+                ++r;
+                ++m;
+                SortMutex.unlock();
+            }
+
+            delete[] L;
+            delete[] R;
+        };
+        std::function<void(int, int)> RMergeSort = [&](int left, int right)
+        {
+            if (left >= right)
+                return;
+
+            int mid = left + (right - left) / 2;
+            RMergeSort(left, mid);
+            RMergeSort(mid + 1, right);
+            Merge(left, mid, right);
+        };
+        RMergeSort(0, n - 1);
     }
 };
 
