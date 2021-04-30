@@ -43,7 +43,12 @@ public:
         //SortThread = new thread(&Visualizer::BubbleSort, this);
         //SortThread = new thread(&Visualizer::InsertionSort, this);
         //SortThread = new thread(&Visualizer::SelectionSort, this);
-        SortThread = new thread(&Visualizer::MergeSort, this);
+        //SortThread = new thread(&Visualizer::HeapSort, this);
+        //SortThread = new thread(&Visualizer::MergeSort, this);
+        //SortThread = new thread(&Visualizer::QuickSort, this);
+        //SortThread = new thread(&Visualizer::ShellSort, this);
+        //SortThread = new thread(&Visualizer::CycleSort, this);
+        SortThread = new thread(&Visualizer::PancakeSort, this);
 
         return true;
     }
@@ -138,6 +143,11 @@ public:
         }
     }
 
+    void HeapSort()
+    {
+
+    }
+
     void MergeSort()
     {
         auto Merge = [&](int left, int mid, int right)
@@ -211,6 +221,155 @@ public:
             Merge(left, mid, right);
         };
         RMergeSort(0, n - 1);
+    }
+
+    void QuickSort()
+    {
+        std::function<void(int, int)> RQuickSort = [&](int low, int high)
+        {
+            if (low < high)
+            {
+                SortMutex.lock();
+                int pivot = Array[high];
+                int i = (low - 1);
+                SortMutex.unlock();
+
+                for (int j = low; j <= high - 1; j++)
+                {
+                    SortMutex.lock();
+                    if (Array[j] <= pivot)
+                    {
+                        i++;
+                        swap(Array[i], Array[j]);
+                    }
+                    SortMutex.unlock();
+                    //std::this_thread::sleep_for(std::chrono::nanoseconds(1000));
+                    std::this_thread::sleep_for(std::chrono::microseconds(2));
+                }
+                SortMutex.lock();
+                swap(Array[i + 1], Array[high]);
+                SortMutex.unlock();
+
+                int pi = i + 1;
+
+                RQuickSort(low, pi - 1);
+                RQuickSort(pi + 1, high);
+            }
+        };
+        RQuickSort(0, n - 1);
+    }
+
+    void ShellSort()
+    {
+        for (int gap = n / 2; gap > 0; gap /= 2)
+        {
+            for (int i = gap; i < n; ++i)
+            {
+                SortMutex.lock();
+                int temp = Array[i];
+
+                int j;
+                for (j = i; j >= gap && Array[j - gap] > temp; j -= gap)
+                    Array[j] = Array[j - gap];
+
+                Array[j] = temp;
+                SortMutex.unlock();
+                std::this_thread::sleep_for(std::chrono::microseconds(2));
+            }
+        }
+    }
+
+    void CycleSort()
+    {
+        int writes = 0;
+
+        for (int cycle_start = 0; cycle_start <= n - 2; cycle_start++) 
+        {
+            SortMutex.lock();
+            int item = Array[cycle_start];
+
+            int pos = cycle_start;
+            for (int i = cycle_start + 1; i < n; i++)
+                if (Array[i] < item)
+                    pos++;
+            SortMutex.unlock();
+
+            if (pos == cycle_start)
+                continue;
+
+            SortMutex.lock();
+            while (item == Array[pos])
+                pos += 1;
+
+            if (pos != cycle_start) 
+            {
+                swap(item, Array[pos]);
+                writes++;
+            }
+            SortMutex.unlock();
+
+            while (pos != cycle_start) 
+            {
+                pos = cycle_start;
+
+                SortMutex.lock();
+                for (int i = cycle_start + 1; i < n; i++)
+                    if (Array[i] < item)
+                        pos += 1;
+
+                while (item == Array[pos])
+                    pos += 1;
+
+                if (item != Array[pos]) 
+                {
+                    swap(item, Array[pos]);
+                    writes++;
+                }
+                SortMutex.unlock();
+                std::this_thread::sleep_for(std::chrono::microseconds(2));
+            }
+        }
+    }
+
+    //Broken
+    void PancakeSort()
+    {
+        auto Flip = [&](int i)
+        {
+            int temp, start = 0;
+            while (start < i) 
+            {
+                temp = Array[start];
+                Array[start] = Array[i];
+                Array[i] = temp;
+                start++;
+                i--;
+            }
+        };
+
+        for (int curr_size = n; curr_size > 1; --curr_size)
+        {
+            //int mi = findMax(arr, curr_size);
+            int mi, i;
+            for (mi = 0, i = 0; i < n; ++i)
+            {
+                SortMutex.lock();
+                if (Array[i] > Array[mi])
+                    mi = i;
+                SortMutex.unlock();
+            }
+
+            if (mi != curr_size - 1) 
+            {
+                SortMutex.lock();
+                Flip(mi);
+                SortMutex.unlock();
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+                SortMutex.lock();
+                Flip(curr_size - 1);
+                SortMutex.unlock();
+            }
+        }
     }
 };
 
