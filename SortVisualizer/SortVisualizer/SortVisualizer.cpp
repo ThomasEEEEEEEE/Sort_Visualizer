@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <string>
 #include "olcPixelGameEngine.h"
 using namespace olc;
 using std::unique_ptr;
@@ -11,6 +12,7 @@ using std::mutex;
 using std::chrono::steady_clock;
 using std::chrono::time_point;
 using std::swap;
+using std::string;
 
 class Visualizer : public PixelGameEngine
 {
@@ -18,6 +20,9 @@ class Visualizer : public PixelGameEngine
     int n;
     thread* SortThread;
     mutex SortMutex;
+    bool ShowMainMenu;
+    int MenuPos;
+    int TextScale;
     //steady_clock::time_point StartTime;
 
 public:
@@ -32,24 +37,17 @@ public:
 
         n = ScreenWidth();
         Array.reset(new int[n]);
+        ShowMainMenu = true;
+        MenuPos = 0;
+        TextScale = 3;
 
         for (int i = 0; i < n; ++i)
         {
             Array[i] = rand() % ScreenHeight();
         }
 
-        //StartTime = steady_clock::now();
+        SortThread = nullptr;
         
-        //SortThread = new thread(&Visualizer::BubbleSort, this);
-        //SortThread = new thread(&Visualizer::InsertionSort, this);
-        //SortThread = new thread(&Visualizer::SelectionSort, this);
-        //SortThread = new thread(&Visualizer::HeapSort, this);
-        //SortThread = new thread(&Visualizer::MergeSort, this);
-        //SortThread = new thread(&Visualizer::QuickSort, this);
-        //SortThread = new thread(&Visualizer::ShellSort, this);
-        //SortThread = new thread(&Visualizer::CycleSort, this);
-        SortThread = new thread(&Visualizer::PancakeSort, this);
-
         return true;
     }
 
@@ -57,20 +55,84 @@ public:
     {
         Clear(BLACK);
 
-        SortMutex.lock();
-        for (int x = 0; x < n; ++x)
+        if (ShowMainMenu)
         {
-            int height = Array[x];
-            for (int y = 0; y < height; ++y)
+            auto DrawMenuString = [&](int x, int y, string str)
             {
-                Draw(x, ScreenHeight() - y - 1, olc::BLUE);
+                int boxwid = ScreenWidth() / 3;
+                int boxheight = ScreenHeight() / 3;
+                DrawString(boxwid * x + (boxwid - GetTextSize(str).x * TextScale) / 2, (boxheight / 2) * (y*2+1) - (GetTextSize(str).y / 2), str, WHITE, TextScale);
+            };
+
+            FillRect((MenuPos % 3) * (ScreenWidth() / 3), (MenuPos / 3) * (ScreenHeight() / 3), ScreenWidth() / 3, ScreenHeight() / 3, Pixel(255, 255, 0));
+            
+            DrawMenuString(0, 0, "Bubble Sort");
+            DrawMenuString(1, 0, "Insertion Sort");
+            DrawMenuString(2, 0, "Selection Sort");
+            DrawMenuString(0, 1, "Heap Sort");
+            DrawMenuString(1, 1, "Merge Sort");
+            DrawMenuString(2, 1, "Quick Sort");
+            DrawMenuString(0, 2, "Shell Sort");
+            DrawMenuString(1, 2, "Cycle Sort");
+            DrawMenuString(2, 2, "Pancake Sort");
+
+            if (GetKey(UP).bReleased && MenuPos > 2)
+                MenuPos -= 3;
+            if (GetKey(DOWN).bReleased && MenuPos < 6)
+                MenuPos += 3;
+            if (GetKey(LEFT).bReleased && MenuPos % 3 != 0)
+                --MenuPos;
+            if (GetKey(RIGHT).bReleased && MenuPos % 3 != 2)
+                ++MenuPos;
+            if (GetKey(ENTER).bReleased || GetKey(SPACE).bReleased)
+            {
+                delete SortThread;
+                switch (MenuPos)
+                {
+                case 0:
+                    SortThread = new thread(&Visualizer::BubbleSort, this);
+                    break;
+                case 1:
+                    SortThread = new thread(&Visualizer::InsertionSort, this);
+                    break;
+                case 2:
+                    SortThread = new thread(&Visualizer::SelectionSort, this);
+                    break;
+                case 3:
+                    SortThread = new thread(&Visualizer::HeapSort, this);
+                    break;
+                case 4:
+                    SortThread = new thread(&Visualizer::MergeSort, this);
+                    break;
+                case 5:
+                    SortThread = new thread(&Visualizer::QuickSort, this);
+                    break;
+                case 6:
+                    SortThread = new thread(&Visualizer::ShellSort, this);
+                    break;
+                case 7:
+                    SortThread = new thread(&Visualizer::CycleSort, this);
+                    break;
+                case 8:
+                    SortThread = new thread(&Visualizer::PancakeSort, this);
+                    break;
+                }
+                ShowMainMenu = false;
             }
         }
-        SortMutex.unlock();
-
-        /*auto dur = steady_clock::now() - StartTime;
-        long long secdur = std::chrono::duration_cast<std::chrono::microseconds>(dur).count();
-        DrawString(10, 10, std::to_string(secdur >> 6), WHITE);*/
+        else
+        {
+            SortMutex.lock();
+            for (int x = 0; x < n; ++x)
+            {
+                int height = Array[x];
+                for (int y = 0; y < height; ++y)
+                {
+                    Draw(x, ScreenHeight() - y - 1, olc::BLUE);
+                }
+            }
+            SortMutex.unlock();
+        }
 
         return true;
     }
@@ -92,6 +154,8 @@ public:
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
             }
         }
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void InsertionSort()
@@ -116,6 +180,9 @@ public:
             Array[j + 1] = key;
             SortMutex.unlock();
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void SelectionSort()
@@ -141,11 +208,54 @@ public:
             Array[i] = temp;
             SortMutex.unlock();
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void HeapSort()
     {
+        std::function<void(int, int)> Heapify = [&](int len, int root)
+        {
+            int largest = root;
+            int left = 2 * root + 1;
+            int right = 2 * root + 2;
 
+            SortMutex.lock();
+            if (left < len && Array[left] > Array[largest])
+                largest = left;
+
+            if (right < len && Array[right] > Array[largest])
+                largest = right;
+            SortMutex.unlock();
+
+            std::this_thread::sleep_for(std::chrono::microseconds(2));
+
+            if (largest != root)
+            {
+                SortMutex.lock();
+                swap(Array[root], Array[largest]);
+                SortMutex.unlock();
+
+                Heapify(len, largest);
+            }
+        };
+
+        for (int i = n / 2 - 1; i >= 0; --i)
+            Heapify(n, i);
+
+        for (int i = n - 1; i >= 0; --i)
+        {
+            SortMutex.lock();
+            swap(Array[0], Array[i]);
+            SortMutex.unlock();
+            std::this_thread::sleep_for(std::chrono::microseconds(2));
+
+            Heapify(i, 0);
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void MergeSort()
@@ -221,6 +331,9 @@ public:
             Merge(left, mid, right);
         };
         RMergeSort(0, n - 1);
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void QuickSort()
@@ -257,6 +370,9 @@ public:
             }
         };
         RQuickSort(0, n - 1);
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void ShellSort()
@@ -277,6 +393,9 @@ public:
                 std::this_thread::sleep_for(std::chrono::microseconds(2));
             }
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
     void CycleSort()
@@ -329,9 +448,11 @@ public:
                 std::this_thread::sleep_for(std::chrono::microseconds(2));
             }
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 
-    //Broken
     void PancakeSort()
     {
         auto Flip = [&](int i)
@@ -347,29 +468,37 @@ public:
             }
         };
 
-        for (int curr_size = n; curr_size > 1; --curr_size)
+        auto FindMax = [&](int size)
         {
-            //int mi = findMax(arr, curr_size);
             int mi, i;
-            for (mi = 0, i = 0; i < n; ++i)
+            for (mi = 0, i = 0; i < size; ++i)
             {
                 SortMutex.lock();
                 if (Array[i] > Array[mi])
                     mi = i;
                 SortMutex.unlock();
             }
+            return mi;
+        };
+
+        for (int curr_size = n; curr_size > 1; --curr_size)
+        {
+            int mi = FindMax(curr_size);
 
             if (mi != curr_size - 1) 
             {
                 SortMutex.lock();
                 Flip(mi);
                 SortMutex.unlock();
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
+                std::this_thread::sleep_for(std::chrono::microseconds(3));
                 SortMutex.lock();
                 Flip(curr_size - 1);
                 SortMutex.unlock();
             }
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        ShowMainMenu = true;
     }
 };
 
