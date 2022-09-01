@@ -1,3 +1,27 @@
+/**********************************************************
+ Author: Thomas Eberhart (ThomasEEEEEEEE)
+
+ Description: This application is a sort visualizer that
+ can visualize 9 different popular sorts:
+ Bubble Sort
+ Insertion Sort
+ Selection Sort
+ Heap Sort
+ Merge Sort
+ Quick Sort
+ Shell Sort
+ Cycle Sort
+ Pancake Sort
+
+ This program features a simple 3x3 menu that allows you to
+ choose any one of these sorts. After seeing it visualized,
+ you will return to the main menu and be free to choose 
+ another one.
+
+ This program utilizes the OneLoneCoder's olcPixelGameEngine
+ for drawing to the screen.
+ https://github.com/OneLoneCoder/olcPixelGameEngine
+**********************************************************/
 #define OLC_PGE_APPLICATION
 #include <iostream>
 #include <chrono>
@@ -23,7 +47,6 @@ class Visualizer : public PixelGameEngine
     bool ShowMainMenu;
     int MenuPos;
     int TextScale;
-    //steady_clock::time_point StartTime;
 
 public:
     Visualizer()
@@ -33,18 +56,12 @@ public:
 
     bool OnUserCreate() override
     {
-        srand(time(0));
+        srand((unsigned int)time(0));
 
         n = ScreenWidth();
-        Array.reset(new int[n]);
         ShowMainMenu = true;
         MenuPos = 0;
         TextScale = 3;
-
-        for (int i = 0; i < n; ++i)
-        {
-            Array[i] = rand() % ScreenHeight();
-        }
 
         SortThread = nullptr;
         
@@ -57,6 +74,7 @@ public:
 
         if (ShowMainMenu)
         {
+            //Lambda for drawing centered text within a 3x3 grid on the main menu
             auto DrawMenuString = [&](int x, int y, string str)
             {
                 int boxwid = ScreenWidth() / 3;
@@ -64,7 +82,8 @@ public:
                 DrawString(boxwid * x + (boxwid - GetTextSize(str).x * TextScale) / 2, (boxheight / 2) * (y*2+1) - (GetTextSize(str).y / 2), str, WHITE, TextScale);
             };
 
-            FillRect((MenuPos % 3) * (ScreenWidth() / 3), (MenuPos / 3) * (ScreenHeight() / 3), ScreenWidth() / 3, ScreenHeight() / 3, Pixel(255, 255, 0));
+            //Colors in the menu option that is currently being hovered over
+            FillRect((MenuPos % 3) * (ScreenWidth() / 3), (MenuPos / 3) * (ScreenHeight() / 3), ScreenWidth() / 3, ScreenHeight() / 3, Pixel(0, 130, 186));
             
             DrawMenuString(0, 0, "Bubble Sort");
             DrawMenuString(1, 0, "Insertion Sort");
@@ -76,6 +95,7 @@ public:
             DrawMenuString(1, 2, "Cycle Sort");
             DrawMenuString(2, 2, "Pancake Sort");
 
+            //Navigate the menu using the arrow keys and enter/space
             if (GetKey(UP).bReleased && MenuPos > 2)
                 MenuPos -= 3;
             if (GetKey(DOWN).bReleased && MenuPos < 6)
@@ -85,8 +105,10 @@ public:
             if (GetKey(RIGHT).bReleased && MenuPos % 3 != 2)
                 ++MenuPos;
             if (GetKey(ENTER).bReleased || GetKey(SPACE).bReleased)
-            {
-                delete SortThread;
+            { //Begin sort visualization
+
+                RandomizeData();
+
                 switch (MenuPos)
                 {
                 case 0:
@@ -117,11 +139,12 @@ public:
                     SortThread = new thread(&Visualizer::PancakeSort, this);
                     break;
                 }
+                SortThread->detach();
                 ShowMainMenu = false;
             }
         }
         else
-        {
+        { //Actively visualizing sort
             SortMutex.lock();
             for (int x = 0; x < n; ++x)
             {
@@ -135,6 +158,17 @@ public:
         }
 
         return true;
+    }
+
+    void RandomizeData()
+    {
+        Array.reset(new int[n]);
+
+        //Generate randomized data
+        for (int i = 0; i < n; ++i)
+        {
+            Array[i] = rand() % ScreenHeight();
+        }
     }
 
     void BubbleSort()
@@ -156,6 +190,10 @@ public:
         }
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void InsertionSort()
@@ -183,6 +221,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void SelectionSort()
@@ -211,6 +253,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+        
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void HeapSort()
@@ -256,6 +302,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+        
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void MergeSort()
@@ -334,6 +384,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void QuickSort()
@@ -356,8 +410,7 @@ public:
                         swap(Array[i], Array[j]);
                     }
                     SortMutex.unlock();
-                    //std::this_thread::sleep_for(std::chrono::nanoseconds(1000));
-                    std::this_thread::sleep_for(std::chrono::microseconds(2));
+                    std::this_thread::sleep_for(std::chrono::nanoseconds(900));
                 }
                 SortMutex.lock();
                 swap(Array[i + 1], Array[high]);
@@ -373,6 +426,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void ShellSort()
@@ -396,6 +453,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void CycleSort()
@@ -451,6 +512,10 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 
     void PancakeSort()
@@ -499,13 +564,17 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ShowMainMenu = true;
+
+        SortMutex.lock();
+        Array.reset(nullptr);
+        SortMutex.unlock();
     }
 };
 
 int main()
 {
+    //Create a window in 1280x720 resolution and display 1 actual pixel on the monitor per pixel
     Visualizer v;
     if (v.Construct(1280, 720, 1, 1))
         v.Start();
 }
-
